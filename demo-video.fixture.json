@@ -1,0 +1,109 @@
+{
+  "unixNow": 1800000000,
+  "cases": [
+    {
+      "name": "提交：构造请求",
+      "hook": "buildSubmitRequest",
+      "args": [
+        {
+          "requestBody": { "prompt": "一只猫在太空漫步", "seconds": 5 },
+          "upstreamModel": "demo-video-v1",
+          "baseUrl": "https://api.demo.example",
+          "apiKey": "test-key"
+        }
+      ],
+      "expected": {
+        "url": "https://api.demo.example/v1/jobs",
+        "method": "POST",
+        "headers": {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer test-key"
+        },
+        "body": { "model": "demo-video-v1", "prompt": "一只猫在太空漫步", "seconds": 5 },
+        "action": "text_to_video"
+      }
+    },
+    {
+      "name": "提交：缺 prompt 拒绝",
+      "hook": "buildSubmitRequest",
+      "args": [{ "requestBody": { "seconds": 5 } }],
+      "expectedError": "prompt is required"
+    },
+    {
+      "name": "提交：秒数越界拒绝",
+      "hook": "buildSubmitRequest",
+      "args": [{ "requestBody": { "prompt": "x", "seconds": 600 } }],
+      "expectedError": "between 1 and 60"
+    },
+    {
+      "name": "提交：解析响应",
+      "hook": "parseSubmitResponse",
+      "args": [{}, { "statusCode": 200, "body": { "job_id": "job_123" } }],
+      "expected": { "taskId": "job_123", "taskData": { "job_id": "job_123" } }
+    },
+    {
+      "name": "提交：缺任务 ID 报错",
+      "hook": "parseSubmitResponse",
+      "args": [{}, { "body": { "message": "bad request" } }],
+      "expectedError": "bad request"
+    },
+    {
+      "name": "查询：构造请求",
+      "hook": "buildQueryRequest",
+      "args": [{ "taskId": "job_123", "baseUrl": "https://api.demo.example", "apiKey": "test-key" }],
+      "expected": {
+        "url": "https://api.demo.example/v1/jobs/job_123",
+        "method": "GET",
+        "headers": { "Authorization": "Bearer test-key" }
+      }
+    },
+    {
+      "name": "查询：排队中",
+      "hook": "parseTaskResult",
+      "args": [{}, { "status": "pending" }],
+      "expected": { "status": "QUEUED" }
+    },
+    {
+      "name": "查询：运行中",
+      "hook": "parseTaskResult",
+      "args": [{}, { "status": "processing" }],
+      "expected": { "status": "IN_PROGRESS" }
+    },
+    {
+      "name": "查询：成功带产物",
+      "hook": "parseTaskResult",
+      "args": [{}, { "status": "done", "video_url": "https://cdn.demo.example/v/1.mp4" }],
+      "expected": { "status": "SUCCESS", "url": "https://cdn.demo.example/v/1.mp4" }
+    },
+    {
+      "name": "查询：失败带原因",
+      "hook": "parseTaskResult",
+      "args": [{}, { "status": "failed", "error": "content policy" }],
+      "expected": { "status": "FAILURE", "reason": "content policy" }
+    },
+    {
+      "name": "查询：未知状态回 UNKNOWN",
+      "hook": "parseTaskResult",
+      "args": [{}, { "status": "weird" }],
+      "expected": { "status": "UNKNOWN", "reason": "unknown job status: weird" }
+    },
+    {
+      "name": "用量：上报秒数",
+      "hook": "extractUsage",
+      "args": [{ "usagePurpose": "facts", "requestBody": { "prompt": "x", "seconds": 8 } }],
+      "expected": { "seconds": 8 }
+    },
+    {
+      "name": "用量：缺省 5 秒",
+      "hook": "extractUsage",
+      "args": [{ "usagePurpose": "facts", "requestBody": { "prompt": "x" } }],
+      "expected": { "seconds": 5 }
+    },
+    {
+      "name": "用量：billing_ratios 用途返回 null",
+      "hook": "extractUsage",
+      "args": [{ "usagePurpose": "billing_ratios", "requestBody": { "prompt": "x", "seconds": 8 } }],
+      "expected": null
+    }
+  ]
+}

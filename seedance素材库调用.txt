@@ -1,0 +1,143 @@
+1. 视频生成
+
+curl -X POST https://aiwithtoken.cn/api/v3/contents/generations/tasks ^
+  -H "Authorization: Bearer 你的APIkey" ^
+  -H "Content-Type: application/json" ^
+  -d "{\"model\":\"doubao-seedance-2-0-260128\",\"content\":[{\"type\":\"text\",\"text\":\"一只猫在草地上奔跑\"}],\"resolution\":\"1080p\",\"ratio\":\"16:9\",\"duration\":5,\"generate_audio\":false,\"watermark\":false}"
+
+
+curl -X POST https://aiwithtoken.cn/api/v3/contents/generations/tasks ^
+  -H "Authorization: Bearer 你的APIkey" ^
+  -H "Content-Type: application/json" ^
+  -d "{\"model\":\"doubao-seedance-2-0-fast-260128\",\"content\":[{\"type\":\"text\",\"text\":\"一只猫在草地上奔跑\"}],\"resolution\":\"1080p\",\"ratio\":\"16:9\",\"duration\":5,\"generate_audio\":false,\"watermark\":false}"
+
+curl -X POST https://aiwithtoken.cn/api/v3/contents/generations/tasks ^
+  -H "Authorization: Bearer 你的APIkey" ^
+  -H "Content-Type: application/json" ^
+  -d "{\"model\":\"doubao-seedance-2-0-mini-260615\",\"content\":[{\"type\":\"text\",\"text\":\"一只猫在草地上奔跑\"}],\"resolution\":\"1080p\",\"ratio\":\"16:9\",\"duration\":5,\"generate_audio\":false,\"watermark\":false}"  
+  
+
+查询任务（把 <TASK_ID> 换成上一步返回的 id）：
+curl -X GET "https://aiwithtoken.cn/api/v3/contents/generations/tasks/task_4i46R1Zx9mFVSJdUFYbUeoVTFhRG3Rqn" ^
+  -H "Authorization: Bearer 你的APIkey"
+
+
+任务列表查询（2026-09-04 新增，只返近 7 天的任务）：
+curl -X GET "https://aiwithtoken.cn/api/v3/contents/generations/tasks?page_num=1^&page_size=20" ^
+  -H "Authorization: Bearer 你的APIkey"
+
+
+按状态过滤（status 取值：succeeded / failed / processing / queued）：
+curl -X GET "https://aiwithtoken.cn/api/v3/contents/generations/tasks?page_num=1^&page_size=20^&filter.status=succeeded" ^
+  -H "Authorization: Bearer 你的APIkey"
+
+
+按模型过滤：
+curl -X GET "https://aiwithtoken.cn/api/v3/contents/generations/tasks?filter.model=doubao-seedance-2-0-260128^&page_size=20" ^
+  -H "Authorization: Bearer 你的APIkey"
+
+
+按任务 ID 列表过滤（逗号分隔，最多 20 个）：
+curl -X GET "https://aiwithtoken.cn/api/v3/contents/generations/tasks?filter.task_ids=task_xxx,task_yyy" ^
+  -H "Authorization: Bearer 你的APIkey"
+
+返回格式：
+  {
+    "total": 3,
+    "items": [
+      {
+        "id": "task_xxx",
+        "model": "doubao-seedance-2-0-260128",
+        "status": "succeeded",
+        "content": {"video_url": "..."},
+        "usage": {"completion_tokens": 50638, "total_tokens": 50638},
+        "created_at": 1788521317,
+        "updated_at": 1788521468,
+        ...
+      }
+    ]
+  }
+
+参数说明：
+  - page_num：页码，默认 1，范围 [1, 500]
+  - page_size：每页数量，默认 20，范围 [1, 500]
+  - filter.status：任务状态，succeeded/failed/processing/queued
+  - filter.model：模型名，对应创建任务时的 model 字段
+  - filter.task_ids：任务 ID 列表，逗号分隔
+  - 仅返回当前 Token 所属用户近 7 天的任务（按 submit_time 过滤）
+2. 素材组
+创建素材组：
+
+
+curl -X POST https://aiwithtoken.cn/api/seedance/proxy/assets/groups ^
+  -H "Authorization: Bearer 你的APIkey" ^
+  -H "Content-Type: application/json" ^
+  -d "{\"Name\":\"test-group\",\"Description\":\"测试素材组\",\"GroupType\":\"AIGC\"}"
+列表查询：
+
+
+curl -X GET "https://aiwithtoken.cn/api/seedance/proxy/assets/groups?PageNumber=1&PageSize=20" ^
+  -H "Authorization: Bearer 你的APIkey"
+查询单个素材组（替换 <GROUP_ID>）：
+
+
+curl -X GET "https://aiwithtoken.cn/api/seedance/proxy/assets/groups/<GROUP_ID>" ^
+  -H "Authorization: Bearer 你的APIkey"
+修改素材组（PATCH，替换 <GROUP_ID>）：
+
+
+curl -X PATCH "https://aiwithtoken.cn/api/seedance/proxy/assets/groups/<GROUP_ID>" ^
+  -H "Authorization: Bearer 你的APIkey" ^
+  -H "Content-Type: application/json" ^
+  -d "{\"Description\":\"更新后的描述\"}"
+删除素材组：
+
+
+curl -X DELETE "https://aiwithtoken.cn/api/seedance/proxy/assets/groups/<GROUP_ID>" ^
+  -H "Authorization: Bearer 你的APIkey"
+3. 素材
+创建素材（替换 <GROUP_ID>）：
+
+
+curl -X POST https://aiwithtoken.cn/api/seedance/proxy/assets ^
+  -H "Authorization: Bearer 你的APIkey" ^
+  -H "Content-Type: application/json" ^
+  -d "{\"GroupId\":\"<GROUP_ID>\",\"URL\":\"https://example.com/test.jpg\",\"AssetType\":\"Image\",\"Name\":\"test-image\"}"
+素材列表：
+
+
+curl -X GET "https://aiwithtoken.cn/api/seedance/proxy/assets?PageNumber=1&PageSize=20" ^
+  -H "Authorization: Bearer 你的APIkey"
+查询单个素材（替换 <ASSET_ID>）：
+
+
+curl -X GET "https://aiwithtoken.cn/api/seedance/proxy/assets/<ASSET_ID>" ^
+  -H "Authorization: Bearer 你的APIkey"
+修改素材（PATCH）：
+
+
+curl -X PATCH "https://aiwithtoken.cn/api/seedance/proxy/assets/<ASSET_ID>" ^
+  -H "Authorization: Bearer 你的APIkey" ^
+  -H "Content-Type: application/json" ^
+  -d "{\"Name\":\"renamed-image\"}"
+删除素材：
+
+
+curl -X DELETE "https://aiwithtoken.cn/api/seedance/proxy/assets/<ASSET_ID>" ^
+  -H "Authorization: Bearer 你的APIkey"
+4. 真人认证
+创建真人认证任务：
+
+
+curl -X POST https://aiwithtoken.cn/api/seedance/face-verifications ^
+  -H "Authorization: Bearer 你的APIkey" ^
+  -H "Content-Type: application/json" ^
+  -d "{\"return_url\":\"https://example.com/face-callback\"}"
+查询认证结果（替换 <VERIFICATION_ID>）：
+
+
+curl -X GET "https://aiwithtoken.cn/api/seedance/face-verifications/<VERIFICATION_ID>" ^
+  -H "Authorization: Bearer 你的APIkey"
+注意事项
+所有 <> 占位符需替换为实际返回的 ID。
+命令使用 ^ 续行，直接粘贴到 CMD 即可。PowerShell 不适用（需改用反引号续行）。

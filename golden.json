@@ -1,0 +1,136 @@
+{
+  "unixNow": 1800000000,
+  "cases": [
+    {
+      "name": "提交构造请求",
+      "hook": "buildSubmitRequest",
+      "args": [
+        {
+          "requestBody": { "prompt": "a cat in space", "seconds": 5, "resolution": "1080p" },
+          "upstreamModel": "acme-v1",
+          "baseUrl": "https://api.acme.example",
+          "apiKey": "test-key"
+        }
+      ],
+      "expected": {
+        "url": "https://api.acme.example/api/v2/generations",
+        "method": "POST",
+        "headers": {
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+          "X-Api-Key": "test-key"
+        },
+        "body": {
+          "model": "acme-v1",
+          "prompt": "a cat in space",
+          "seconds": 5,
+          "resolution": "1080p"
+        },
+        "action": "text_to_video"
+      }
+    },
+    {
+      "name": "空 prompt 拒绝",
+      "hook": "buildSubmitRequest",
+      "args": [{ "requestBody": {}, "baseUrl": "https://api.acme.example" }],
+      "expectedError": "prompt is required"
+    },
+    {
+      "name": "秒数越界拒绝",
+      "hook": "buildSubmitRequest",
+      "args": [
+        { "requestBody": { "prompt": "x", "seconds": 30 }, "baseUrl": "https://api.acme.example" }
+      ],
+      "expectedError": "between 3 and 10"
+    },
+    {
+      "name": "提交响应解析",
+      "hook": "parseSubmitResponse",
+      "args": [
+        {},
+        {
+          "statusCode": 200,
+          "headers": {},
+          "body": { "code": 0, "data": { "generation_id": "gen_1" } }
+        }
+      ],
+      "expected": {
+        "taskId": "gen_1",
+        "taskData": { "code": 0, "data": { "generation_id": "gen_1" } }
+      }
+    },
+    {
+      "name": "提交业务错误",
+      "hook": "parseSubmitResponse",
+      "args": [{}, { "body": { "code": 4001, "message": "quota exceeded" } }],
+      "expectedError": "quota exceeded"
+    },
+    {
+      "name": "查询请求",
+      "hook": "buildQueryRequest",
+      "args": [
+        { "taskId": "gen_1", "baseUrl": "https://api.acme.example", "apiKey": "test-key" }
+      ],
+      "expected": {
+        "url": "https://api.acme.example/api/v2/generations/gen_1",
+        "method": "GET",
+        "headers": { "Accept": "application/json", "X-Api-Key": "test-key" }
+      }
+    },
+    {
+      "name": "运行中状态",
+      "hook": "parseTaskResult",
+      "args": [{}, { "data": { "status": "running", "progress": "45%" } }],
+      "expected": { "status": "IN_PROGRESS", "progress": "45%" }
+    },
+    {
+      "name": "未知状态回 UNKNOWN",
+      "hook": "parseTaskResult",
+      "args": [{}, { "data": { "status": "weird" } }],
+      "expected": { "status": "UNKNOWN", "reason": "unknown generation status: weird" }
+    },
+    {
+      "name": "成功带产物",
+      "hook": "parseTaskResult",
+      "args": [
+        {},
+        { "data": { "status": "succeeded", "video_url": "https://cdn.acme.example/v/1.mp4" } }
+      ],
+      "expected": { "status": "SUCCESS", "url": "https://cdn.acme.example/v/1.mp4" }
+    },
+    {
+      "name": "上报用量",
+      "hook": "extractUsage",
+      "args": [{ "usagePurpose": "facts", "requestBody": { "seconds": 5, "resolution": "720p" } }],
+      "expected": { "seconds": 5, "resolution": "720p" }
+    },
+    {
+      "name": "成功任务有产物",
+      "hook": "listArtifacts",
+      "args": [
+        { "status": "SUCCESS", "data": { "data": { "video_url": "https://cdn.acme.example/v/1.mp4" } } }
+      ],
+      "expected": [{ "key": "video", "type": "video" }]
+    },
+    {
+      "name": "非成功任务无产物",
+      "hook": "listArtifacts",
+      "args": [{ "status": "IN_PROGRESS", "data": {} }],
+      "expected": []
+    },
+    {
+      "name": "Responses 解码",
+      "hook": "protocols",
+      "path": ["openai_responses", "decodeRequest"],
+      "args": [
+        { "body": { "kind": "json", "value": { "model": "acme-v1", "input": "a cat in space" } } }
+      ],
+      "expected": {
+        "kind": "submit",
+        "model": "acme-v1",
+        "action": "text_to_video",
+        "requestBody": { "model": "acme-v1", "prompt": "a cat in space" }
+      }
+    }
+  ]
+}
